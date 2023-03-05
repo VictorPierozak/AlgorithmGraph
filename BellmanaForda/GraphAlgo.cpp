@@ -1,7 +1,7 @@
 #include"GraphAlgo.h"
 
 //
-//-- Funckje wypisuj¹ce w konsoli --
+//-- Printing graph structer in command line --
 //
 
 
@@ -46,11 +46,10 @@ void showResultF(const PathF* result, const int size)
 }
 
 //
-//-- Funkcje tworz¹ce/wype³niaj¹ce struktry --
+//-- Functions to create graph structer --
 //
 
-// ->Macierz s¹siedztwa
-
+// Read adjacency matrix from text file
 unsigned int readMatrix(int**& matrix, const std::string& fileName)
 {
     if (matrix != nullptr) return 0;
@@ -76,8 +75,7 @@ unsigned int readMatrix(int**& matrix, const std::string& fileName)
     return vertexNum;
 }
 
-// ->Lista s¹siedztwa
-
+//Crete adjacency list from adjacency matrix
 void makeAdjacencyList(int** matrix, const unsigned int vertexNum, AdjacencyList*& dest)
 {
     if (dest != nullptr) return;
@@ -89,8 +87,8 @@ void makeAdjacencyList(int** matrix, const unsigned int vertexNum, AdjacencyList
                 dest[i].push_back(Adjacency(j, matrix[i][j]));
 }
 
-// ->Lista krawêdzi
 
+//Create edge list from adjacency matrix
 void makeEdgeList(int** matrix, const unsigned int vertexNum, EdgeList& edges)
 {
     if (matrix == nullptr) return;
@@ -100,7 +98,7 @@ void makeEdgeList(int** matrix, const unsigned int vertexNum, EdgeList& edges)
                 edges.emplace_back(Edge(row, column, matrix[row][column]));
 }
 
-
+//Function to check if edge with given begining, end and cost already exist 
 bool isEdgeValid(EdgeList& edges, const int beg, const int end, const int cost)
 {
     for (auto edge = edges.begin(); edge != edges.end(); edge++)
@@ -109,8 +107,7 @@ bool isEdgeValid(EdgeList& edges, const int beg, const int end, const int cost)
     return false;
 }
 
-// ->PathF
-
+//Function to create a container for storing results of a given algorithm
 void resetResultF(PathF*& result, const unsigned int vertexNum)
 {
     if (result == nullptr)
@@ -128,11 +125,219 @@ void resetResultF(PathF*& result, const unsigned int vertexNum)
 
 
 //
-//-- Algorytmy grafowe --
+//-- Algorithms computing shortest path from source vertex to all of the other verticies --
 //
 
-// ->Przeszukiwanie, szukanie po³¹czenia
 
+// ->Bellman-Ford
+bool BellmanFord(EdgeList& edges, const unsigned int vertexNum, const int start, PathF*& result)
+{
+    if (edges.empty() || vertexNum == 0) return false;
+
+    resetResultF(result, vertexNum);
+
+    result[start]._cost = 0;
+
+    bool changed = false;
+    for (int n = 0; n < vertexNum - 1; n++)
+    {
+        changed = false;
+        for (auto edge = edges.begin(); edge != edges.end(); edge++)
+            if (result[edge->_end]._cost > result[edge->_beg]._cost + edge->_cost)
+            {
+                result[edge->_end]._prevVertex = edge->_beg;
+                result[edge->_end]._cost = result[edge->_beg]._cost + edge->_cost;
+                changed = true;
+            }
+        if (changed == false) break;
+    }
+
+    if (isNegativeCycle(edges, result))
+    {
+        resetResultF(result, vertexNum);
+        return false;
+    }
+
+    return true;
+}
+
+bool isNegativeCycle(EdgeList& edges, PathF* result)
+{
+    for (auto edge = edges.begin(); edge != edges.end(); edge++)
+        if (result[edge->_end]._cost > result[edge->_beg]._cost + edge->_cost)
+            return true;
+    return false;
+}
+
+
+//Dijkstra
+void Dijkstra(AdjacencyList* graph, const unsigned int vertexNum, const int startVertex, PathF*& result)
+{
+    if (graph == nullptr || vertexNum == 0) return;
+
+    resetResultF(result, vertexNum);
+
+    result[startVertex]._cost = 0;
+
+    std::list<int> toVisit;
+    for (int i = 0; i < vertexNum; i++)
+        toVisit.push_back(i);
+
+    std::list<int>::iterator vertex;
+    while (toVisit.empty() == false)
+    {
+        vertex = std::move(smallestCost(toVisit.begin(), toVisit.end(), result));
+        for (auto adj = graph[(*vertex)].begin(); adj != graph[(*vertex)].end(); adj++)
+            if (result[adj->_vertex]._cost > result[*vertex]._cost + adj->_cost)
+            {
+                result[adj->_vertex]._prevVertex = *vertex;
+                result[adj->_vertex]._cost = result[*vertex]._cost + adj->_cost;
+            }
+        toVisit.erase(vertex);
+    }
+}
+
+std::list<int>::iterator smallestCost(const std::list<int>::iterator& beg, const std::list<int>::iterator& end, const PathF* p)
+{
+    std::list<int>::iterator result = beg;
+    for (std::list<int>::iterator v = beg; v != end; v++)
+        if (p[*v]._cost < p[*result]._cost)
+            result = v;
+    return result;
+}
+
+//
+//-- Algorithms finding a MST --
+//
+
+//Kruskal's algorithm
+void Kruskal(EdgeList& graph, const unsigned int vertexNum, EdgeList& MST)
+{
+    if (graph.empty() || vertexNum == 0) return;
+    if (MST.empty() == false) return;
+
+    sortEdgeList(graph);
+
+    int* trees = new int[vertexNum];
+    int* color = new int[vertexNum];
+
+    int newTreeNum = 0;
+
+    fillArray(color, vertexNum, (int)WHITE);
+
+    for (EdgeList::iterator current = graph.begin(); current != graph.end(); current++)
+    {
+        if (color[current->_beg] == WHITE && color[current->_end] == WHITE)
+        {
+            trees[current->_beg] = newTreeNum;
+            trees[current->_end] = newTreeNum;
+            color[current->_beg] = GREY;
+            color[current->_end] = GREY;
+
+            MST.push_back(*current);
+            newTreeNum++;
+            continue;
+        }
+        if (color[current->_beg] == WHITE)
+        {
+            trees[current->_beg] = trees[current->_end];
+            color[current->_beg] = GREY;
+            MST.push_back(* current);
+            continue;
+        }
+        if (color[current->_end] == WHITE)
+        {
+            trees[current->_end] = trees[current->_beg];
+            color[current->_end] = GREY;
+            MST.push_back(*current);
+            continue;
+        }
+        if (trees[current->_beg] != trees[current->_end])
+        {
+            mergeTrees(trees, vertexNum, trees[current->_beg], trees[current->_end], newTreeNum);
+            MST.push_back(*current);
+            newTreeNum++;
+        }
+
+    }
+
+    delete[] trees;
+    delete[] color;
+}
+
+//Function returning a sum of costs of edges from a edge list
+float edgeLnSum(EdgeList& graphs)
+{
+    float result = 0;
+    for (EdgeList::iterator edge = graphs.begin(); edge != graphs.end(); edge++)
+        result += edge->_cost;
+    return result;
+}
+
+void sortEdgeList(EdgeList& graph)
+{
+    EdgeList tmp;
+    for (auto edge : graph)
+        tmp.insert(std::lower_bound(tmp.begin(), tmp.end(), edge), edge);
+    graph.clear();
+    graph = std::move(tmp);
+}
+
+//Function merging trees in Kruskal's algorithm
+void mergeTrees(int* trees, const unsigned int size, const int treeA, const int treeB, const int newTree)
+{
+    for (unsigned int i = 0; i < size; i++)
+        if (trees[i] == treeA || trees[i] == treeB)
+            trees[i] = newTree;
+}
+
+
+//Prim's algorithm
+void Prim(AdjacencyList* graph, const unsigned int verticesNum, PathF*& MST)
+{
+    if (graph == nullptr || verticesNum == 0) return;
+
+    resetResultF(MST, verticesNum);
+
+    std::list<int> toVisit;
+    int* color = new int[verticesNum];
+
+    fillArray(color, verticesNum, (int)WHITE);
+
+    MST[0]._prevVertex = -1;
+    MST[0]._cost = 0;
+    toVisit.push_back(0);
+
+    std::list<int>::iterator vertex;
+    while (toVisit.empty() == false)
+    {
+        vertex = smallestCost(toVisit.begin(), toVisit.end(), MST);
+      
+        color[*vertex] = BLACK;
+
+        for (auto adj : graph[*vertex])
+        {
+            if (color[adj._vertex] == WHITE)
+            {
+                toVisit.push_back(adj._vertex);
+                color[adj._vertex] = GREY;
+
+                MST[adj._vertex]._prevVertex = *vertex;
+                MST[adj._vertex]._cost = adj._cost;
+            }
+            else if (color[adj._vertex] == GREY && MST[adj._vertex]._cost > adj._cost)
+            {
+                MST[adj._vertex]._prevVertex = *vertex;
+                MST[adj._vertex]._cost = adj._cost;
+            }
+        }
+        toVisit.erase(vertex);
+    }
+
+    delete[] color;
+}
+
+//Function returns true if there is a connection between two verticies, if there is not - return false
 bool isConnection(int** matrix, const int matrixSize, const unsigned int vertexA, const unsigned int vertexB)
 {
     if (matrix == nullptr || matrixSize == 0) return false;
@@ -170,196 +375,4 @@ bool isConnection(int** matrix, const int matrixSize, const unsigned int vertexA
     }
     delete[] colorArray;
     return isConnected;
-}
-
-
-
-// ->Algorytm Bellmana-Forda
-
-bool BellmanFord(EdgeList& edges, const unsigned int vertexNum, const int start, PathF*& result)
-{
-    if (edges.empty() || vertexNum == 0) return false;
-
-    resetResultF(result, vertexNum);
-
-    result[start]._cost = 0;
-
-    bool changed = false;
-    for (int n = 0; n < vertexNum - 1; n++)
-    {
-        changed = false;
-        for (auto edge = edges.begin(); edge != edges.end(); edge++)
-            if (result[edge->_end]._cost > result[edge->_beg]._cost + edge->_cost)
-            {
-                result[edge->_end]._prevVertex = edge->_beg;
-                result[edge->_end]._cost = result[edge->_beg]._cost + edge->_cost;
-                changed = true;
-            }
-        if (changed == false) break;
-    }
-
-    if (isNegativeCycle(edges, result))
-    {
-        resetResultF(result, vertexNum);
-        return false;
-    }
-
-    return true;
-}
-
-bool isNegativeCycle(EdgeList& edges, PathF* result)
-{
-    bool changed = false;
-    for (auto edge = edges.begin(); edge != edges.end(); edge++)
-        if (result[edge->_end]._cost < result[edge->_beg]._cost + edge->_cost)
-        {
-            result[edge->_end]._prevVertex = edge->_beg;
-            result[edge->_end]._cost = result[edge->_beg]._cost + edge->_cost;
-            changed = true;
-        }
-    if (changed == true) return true;
-    else return false;
-}
-
-
-// ->Algorytm Dijkstry
-
-/* Algorytm Dijkstry */
-void Dijkstra(AdjacencyList* graph, const unsigned int vertexNum, const int startVertex, PathF*& result)
-{
-    if (graph == nullptr || vertexNum == 0) return;
-    if (result != nullptr) return;
-
-    result = new PathF[vertexNum];
-    resetResultF(result, vertexNum);
-
-    result[startVertex]._cost = 0;
-
-    std::list<int> toVisit;
-    for (int i = 0; i < vertexNum; i++)
-        toVisit.push_back(i);
-
-    std::list<int>::iterator vertex;
-    while (toVisit.empty() == false)
-    {
-        vertex = std::move(smallestCost(toVisit.begin(), toVisit.end(), result));
-        for (auto adj = graph[(*vertex)].begin(); adj != graph[(*vertex)].end(); adj++)
-            if (result[adj->_vertex]._cost > result[*vertex]._cost + adj->_cost)
-            {
-                result[adj->_vertex]._prevVertex = *vertex;
-                result[adj->_vertex]._cost = result[*vertex]._cost + adj->_cost;
-            }
-        toVisit.erase(vertex);
-    }
-}
-
-std::list<int>::iterator smallestCost(const std::list<int>::iterator& beg, const std::list<int>::iterator& end, const PathF* p)
-{
-    std::list<int>::iterator result = beg;
-    for (std::list<int>::iterator v = beg; v != end; v++)
-        if (p[*v]._cost < p[*result]._cost)
-            result = v;
-    return result;
-}
-
-// ->Algorytm Kruskala
-
-void Kruskal(EdgeList& graph, const unsigned int vertexNum, EdgeList& MDR)
-{
-    if (graph.empty() || vertexNum == 0) return;
-    if (MDR.empty() == false) return;
-
-    int* trees = new int[vertexNum];
-    int* color = new int[vertexNum];
-
-    int newTreeNum = 0;
-
-    for (int i = 0; i < vertexNum; i++)
-        color[i] = 0;
-
-    for (EdgeList::iterator current = graph.begin(); current != graph.end(); current++)
-    {
-        if (color[current->_beg] == WHITE && color[current->_end] == WHITE)
-        {
-            trees[current->_beg] = newTreeNum;
-            trees[current->_end] = newTreeNum;
-            color[current->_beg] = GREY;
-            color[current->_end] = GREY;
-
-            MDR.push_back(Edge(*current));
-            newTreeNum++;
-            continue;
-        }
-        if (color[current->_beg] == WHITE)
-        {
-            trees[current->_beg] = trees[current->_end];
-            color[current->_beg] = 1;
-            MDR.push_back(Edge(*current));
-            continue;
-        }
-        if (color[current->_end] == WHITE)
-        {
-            trees[current->_end] = trees[current->_beg];
-            color[current->_end] = 1;
-            MDR.push_back(Edge(*current));
-            continue;
-        }
-        if (trees[current->_beg] != trees[current->_end])
-        {
-            mergeTrees(trees, vertexNum, trees[current->_beg], trees[current->_end], newTreeNum);
-            newTreeNum++;
-        }
-
-    }
-
-    delete[] trees;
-    delete[] color;
-}
-
-void mergeTrees(int* trees, const unsigned int size, const int treeA, const int treeB, const int newTree)
-{
-    for (unsigned int i = 0; i < size; i++)
-        if (trees[i] == treeA || trees[i] == treeB)
-            trees[i] = newTree;
-}
-
-
-// ->Algorytm Prima
-
-
-void Prim(AdjacencyList* graph, const unsigned int verticesNum, PathF*& MDR)
-{
-    if (graph == nullptr || verticesNum == 0) return;
-
-    resetResultF(MDR, verticesNum);
-
-    std::list<int> toVisit;
-    int* color = new int[verticesNum];
-
-    fillArray(color, verticesNum, (int)WHITE);
-
-    MDR[0]._prevVertex = -1;
-    MDR[0]._cost = 0;
-    toVisit.push_back(0);
-
-    std::list<int>::iterator vertex;
-    while (toVisit.empty() == false)
-    {
-        vertex = smallestCost(toVisit.begin(), toVisit.end(), MDR);
-      
-        color[*vertex] = BLACK;
-
-        for(auto adj: graph[*vertex])
-            if (color[adj._vertex] == WHITE)
-            {
-                toVisit.push_back(adj._vertex);
-                color[adj._vertex] = GREY;
-
-                MDR[adj._vertex]._prevVertex = *vertex;
-                MDR[adj._vertex]._cost = adj._cost;
-            }
-        toVisit.erase(vertex);
-    }
-
-    delete[] color;
 }

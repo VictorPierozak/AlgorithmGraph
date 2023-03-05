@@ -2,13 +2,7 @@
 
 #include<list>
 
-struct Path
-{
-    int distance;
-    int prevVertex;
-};
-
-
+//Class for storing information about a path in a graph
 class PathF
 {
 
@@ -24,7 +18,7 @@ public:
     }
 };
 
-
+//Class representing adjacent vertex
 class Adjacency
 {
 public:
@@ -38,7 +32,7 @@ public:
     }
 };
 
-
+//Class represeting single edge in a graph
 class Edge
 {
 public:
@@ -64,4 +58,5 @@ typedef std::list<Edge> EdgeList;
 
 typedef std::list<Adjacency> AdjacencyList;
 
+//For algorithms use
 enum Colors { WHITE = 0, GREY, BLACK };

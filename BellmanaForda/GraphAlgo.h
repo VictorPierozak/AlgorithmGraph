@@ -77,14 +77,18 @@ std::list<int>::iterator smallestCost(const std::list<int>::iterator& beg, const
 // ->Algorytm Kruskala
 
 /* Algorytm Kruskala */
-void Kruskal(EdgeList& graph, const unsigned int vertexNum, EdgeList& MDR);
+void Kruskal(EdgeList& graph, const unsigned int vertexNum, EdgeList& MST);
+
+float edgeLnSum(EdgeList& graph);
+
+void sortEdgeList(EdgeList& graph);
 
 /* Funckja pomocnicza: ³¹czy dwa drzewa w algorytmie Kruskala */
 void mergeTrees(int* trees, const unsigned int size, const int treeA, const int treeB, const int newTree);
 
 // ->Algorytm Prima
 
-void Prim(AdjacencyList* graph, const unsigned int verticesNum, PathF*& MDR);
+void Prim(AdjacencyList* graph, const unsigned int verticesNum, PathF*& MST);
 
 //
 // -- Inne --

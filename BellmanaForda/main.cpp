@@ -11,6 +11,8 @@
 
 int main()
 {
+    //Testing algorithms
+
     const std::string fileName("macierz.txt");
 
     int** matrix = nullptr;
@@ -25,15 +27,24 @@ int main()
     makeAdjacencyList(matrix, verticesNum, graph);
     showAdjacencyList(graph, verticesNum);
 
+    std::cout << "BELLMAN FORD\n";
+
     PathF* result = nullptr;
-    BellmanFord(edges, verticesNum, 0, result);
+    std::cout<< "IS NEGATIVE CYCLE? " << BellmanFord(edges, verticesNum, 0, result) << std::endl;
     showResultF(result, verticesNum);
 
+    std::cout << "DIJKSTRA\n";
     Dijkstra(graph, verticesNum, 0, result);
     showResultF(result, verticesNum);
     
+    std::cout << "PRIM\n";
     Prim(graph, verticesNum, result);
     showResultF(result, verticesNum);
+
+    std::cout << "KRUSKAL\n";
+    EdgeList MST;
+    Kruskal(edges, verticesNum, MST);
+    showEdgeList(MST);
 
     if (result != nullptr)
         delete result;
